@@ -1,0 +1,61 @@
+syntax = "proto3"; // Указывает версию Protobuf (proto3)
+
+package user_v1;
+
+import "google/protobuf/timestamp.proto";  // Для работы с датами/временем
+import "google/protobuf/empty.proto";      // Пустой тип (void/empty response)
+import "google/protobuf/wrappers.proto";   // Обертки для nullable типов (StringValue, BoolValue)
+
+option go_package = "github.com/Denis/auth/pkg/user_v1;user_v1"; // ↑ Указывает путь для генерации Go-кода:
+
+service UserV1 { //Определение сервиса (gRPC API)
+  rpc Create(CreateRequest) returns (CreateResponse);  // o создания нового пользователя в системе. 
+  rpc Get(GetRequest) returns (GetResponse); //  получения информации о пользователе по его идентификатору.
+  rpc Update(UpdateRequest) returns (google.protobuf.Empty); // o обновления информации о пользователе по его идентификатору. 
+  rpc Delete(DeleteRequest) returns (google.protobuf.Empty); //удаление пользователя из системы по его идентификатору. 
+}
+enum Role {
+  USER = 0;    // ← обычный пользователь
+  ADMIN = 1;   // ← администратор
+}
+
+
+
+message CreateRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+  string password_confirm = 4;
+  Role role = 5;
+}
+
+message CreateResponse {
+  int64 id = 1;
+}
+
+message GetRequest {
+  int64 id = 1;
+}
+
+message GetResponse {
+  int64 id = 1;
+  string name = 2;
+  string email = 3;
+  Role role = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message UpdateRequest {
+  int64 id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue email = 3;
+}
+
+
+message DeleteRequest {
+  int64 id = 1;
+}
+
+
+
