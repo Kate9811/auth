@@ -1,4 +1,4 @@
-package test
+package tests
 
 import (
 	"context" // Пакет для работы с контекстом (таймауты, отмена запросов)

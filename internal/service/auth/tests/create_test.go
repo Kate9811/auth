@@ -36,7 +36,7 @@ func TestCreate(t *testing.T) {
 		password = gofakeit.Password(true, true, true, true, false, 10)
 		role     = "user"
 
-		repoErr = fmt.Errorf("repository error")
+		repoErr = fmt.Errorf("repository error (create)")
 
 		req = &model.AuthInfo{
 			Name:         name,
