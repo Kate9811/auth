@@ -1,3 +1,4 @@
 bin/
 .vscode/
-.env/
+.env//coverage.out
+/coverage.out

@@ -3,19 +3,36 @@ package auth
 
 import (
 	"github.com/Denis/project_auth/internal/repository"
-	desc "github.com/Denis/project_auth/pkg/user_v1"
+
+	"github.com/Denis/project_auth/internal/client/db"
+
+	"github.com/Denis/project_auth/internal/service"
 )
 
 type serv struct {
-	desc.UnimplementedUserV1Server // ← Встраиваем для совместимости
-	authRepository                 repository.AuthRepository
+	authRepository repository.AuthRepository
+	txManager      db.TxManager
 }
 
 func NewService(
 	authRepository repository.AuthRepository,
+	//txManager db.TxManager,
 
-) desc.UserV1Server {
+) service.AuthService {
 	return &serv{
 		authRepository: authRepository,
+		//txManager:      txManager,
 	}
+}
+func NewMockService(deps ...interface{}) service.AuthService {
+	srv := serv{}
+	for _, v := range deps {
+		switch s := v.(type) {
+		case repository.AuthRepository:
+			srv.authRepository = s
+		case db.TxManager: // ← ДОБАВИТЬ!
+			srv.txManager = s
+		}
+	}
+	return &srv
 }

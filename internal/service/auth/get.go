@@ -3,17 +3,14 @@ package auth
 import (
 	"context"
 
-	"github.com/Denis/project_auth/internal/converter"
-	desc "github.com/Denis/project_auth/pkg/user_v1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/Denis/project_auth/internal/model"
 )
 
-func (s *serv) Get(ctx context.Context, req *desc.GetRequest) (*desc.GetResponse, error) {
-	authModel, err := s.authRepository.Get(ctx, req.GetId())
+func (s *serv) Get(ctx context.Context, id int64) (*model.Auth, error) {
+	authModel, err := s.authRepository.Get(ctx, id)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "user not found")
+		return nil, err
 	}
 
-	return converter.AuthToGetResponse(authModel), nil
+	return authModel, nil
 }

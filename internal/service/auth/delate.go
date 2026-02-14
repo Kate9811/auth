@@ -3,17 +3,30 @@ package auth
 import (
 	"context"
 
-	desc "github.com/Denis/project_auth/pkg/user_v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (s *serv) Delete(ctx context.Context, req *desc.DeleteRequest) (*emptypb.Empty, error) {
-	err := s.authRepository.Delete(ctx, req.GetId())
+func (s *serv) Delete(ctx context.Context, id int64) error {
+	// Delete изменяет данные - нужна транзакция!
+	err := s.txManager.ReadCommitted(ctx, func(ctx context.Context) error {
+		// Проверяем, существует ли пользователь перед удалением
+		_, err := s.authRepository.Get(ctx, id)
+		if err != nil {
+			return status.Error(codes.NotFound, "user not found")
+		}
+
+		// Удаляем
+		return s.authRepository.Delete(ctx, id)
+	})
+
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to delete user")
+		// Проверяем тип ошибки
+		if _, ok := status.FromError(err); ok {
+			return err // Уже grpc ошибка
+		}
+		return status.Error(codes.Internal, "failed to delete user: "+err.Error())
 	}
 
-	return &emptypb.Empty{}, nil
+	return nil
 }

@@ -3,11 +3,10 @@ package auth
 import (
 	"context"
 	"fmt"
-	"log"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v4/pgxpool"
 
+	"github.com/Denis/project_auth/internal/client/db"
 	"github.com/Denis/project_auth/internal/model"
 	"github.com/Denis/project_auth/internal/repository"
 )
@@ -24,15 +23,14 @@ const (
 )
 
 type repo struct {
-	db *pgxpool.Pool
+	db db.Client
 }
 
-func NewRepository(db *pgxpool.Pool) repository.AuthRepository {
+func NewRepository(db db.Client) repository.AuthRepository {
 	return &repo{db: db}
 }
 
 func (r *repo) Create(ctx context.Context, info *model.AuthInfo) (int64, error) {
-
 	builder := sq.Insert(tableName).
 		PlaceholderFormat(sq.Dollar).
 		Columns(colName, colEmail, colPassword, colRole).
@@ -43,8 +41,15 @@ func (r *repo) Create(ctx context.Context, info *model.AuthInfo) (int64, error) 
 	if err != nil {
 		return 0, fmt.Errorf("build query: %w", err)
 	}
+
+	q := db.Query{
+		Name:     "auth_repository.Create", // Исправлено имя
+		QueryRaw: query,
+	}
+
 	var id int64
-	err = r.db.QueryRow(ctx, query, args...).Scan(&id)
+	// Правильно: через r.db.DB().QueryRowContext()
+	err = r.db.DB().ScanOneContext(ctx, &id, q, args...)
 	if err != nil {
 		return 0, fmt.Errorf("exec query: %w", err)
 	}
@@ -66,16 +71,14 @@ func (r *repo) Get(ctx context.Context, id int64) (*model.Auth, error) {
 		return nil, fmt.Errorf("build query: %w", err)
 	}
 
+	q := db.Query{
+		Name:     "auth_repository.Get", // Исправлено имя
+		QueryRaw: query,
+	}
+
 	var auth model.Auth
-	err = r.db.QueryRow(ctx, query, args...).Scan(
-		&auth.ID,
-		&auth.Info.Name,
-		&auth.Info.Email,
-		&auth.Info.PasswordHash,
-		&auth.Info.Role,
-		&auth.CreatedAt,
-		&auth.UpdatedAt,
-	)
+	// Правильно: через r.db.DB().QueryRowContext()
+	err = r.db.DB().ScanOneContext(ctx, &auth, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("exec query: %w", err)
 	}
@@ -113,12 +116,15 @@ func (r *repo) Update(ctx context.Context, id int64, info *model.AuthInfo) error
 		return fmt.Errorf("build query: %w", err)
 	}
 
-	// Добавьте лог для отладки!
-	log.Printf("[SQL UPDATE] Query: %s, Args: %v", query, args)
+	q := db.Query{ // Добавьте db.Query!
+		Name:     "auth_repository.Update",
+		QueryRaw: query,
+	}
 
-	_, err = r.db.Exec(ctx, query, args...)
+	// ❌ НЕПРАВИЛЬНО: r.db.ExecContext(ctx, query, args...)
+	// ✅ ПРАВИЛЬНО: через r.db.DB().ExecContext()
+	_, err = r.db.DB().ExecContext(ctx, q, args...)
 	if err != nil {
-		log.Printf("[SQL UPDATE ERROR] %v", err)
 		return fmt.Errorf("exec query: %w", err)
 	}
 
@@ -135,7 +141,14 @@ func (r *repo) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("build query: %w", err)
 	}
 
-	_, err = r.db.Exec(ctx, query, args...)
+	q := db.Query{ // Добавьте db.Query!
+		Name:     "auth_repository.Delete",
+		QueryRaw: query,
+	}
+
+	// ❌ НЕПРАВИЛЬНО: r.db.ExecContext(ctx, query, args...)
+	// ✅ ПРАВИЛЬНО: через r.db.DB().ExecContext()
+	_, err = r.db.DB().ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("exec query: %w", err)
 	}
