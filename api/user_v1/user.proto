@@ -5,14 +5,56 @@ package user_v1;
 import "google/protobuf/timestamp.proto";  // Для работы с датами/временем
 import "google/protobuf/empty.proto";      // Пустой тип (void/empty response)
 import "google/protobuf/wrappers.proto";   // Обертки для nullable типов (StringValue, BoolValue)
+import "validate/validate.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/Denis/auth/pkg/user_v1;user_v1"; // ↑ Указывает путь для генерации Go-кода:
 
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Auth API"
+    version: "1.0.0"
+    contact: {
+      name: "Kate Miroshnichenko"
+      email: "yekaterina.miroshnichenko.2006@mail.ru"
+    };
+  };
+
+  host: "localhost:8080",
+  schemes: HTTP,
+  schemes: HTTPS,
+  consumes: "application/json",
+  produces: "application/json",
+};
+
 service UserV1 { //Определение сервиса (gRPC API)
-  rpc Create(CreateRequest) returns (CreateResponse);  // o создания нового пользователя в системе. 
-  rpc Get(GetRequest) returns (GetResponse); //  получения информации о пользователе по его идентификатору.
-  rpc Update(UpdateRequest) returns (google.protobuf.Empty); // o обновления информации о пользователе по его идентификатору. 
-  rpc Delete(DeleteRequest) returns (google.protobuf.Empty); //удаление пользователя из системы по его идентификатору. 
+  //создает новую заметку
+  rpc Create(CreateRequest) returns (CreateResponse){
+    option (google.api.http) = {
+      post: "/auth/v1/create"
+      body: "*"
+    };
+  }
+  //получает заметку по id 
+  rpc Get(GetRequest) returns (GetResponse){
+    option (google.api.http) = {
+      get: "/auth/v1"
+    };
+  }
+  //обновляет заметку
+  rpc Update(UpdateRequest) returns (google.protobuf.Empty){
+    option (google.api.http) = {
+      patch: "/auth/v1"
+      body: "*"
+    };
+  }
+  //удаляет заметку
+  rpc Delete(DeleteRequest) returns (google.protobuf.Empty){
+    option (google.api.http) = {
+      delete: "/auth/v1"
+    };
+  }
 }
 enum Role {
   USER = 0;    // ← обычный пользователь
@@ -22,19 +64,38 @@ enum Role {
 
 
 message CreateRequest {
-  string name = 1;
-  string email = 2;
-  string password = 3;
+  // Валидация имени: от 2 до 50 символов, только буквы и цифры
+  string name = 1 [(validate.rules).string = {
+    min_len: 2,
+    max_len: 50,
+    pattern: "^[a-zA-Z0-9]+$"
+  }];
+  
+  // Валидация email: должен быть корректным email-адресом
+  string email = 2 [(validate.rules).string.email = true];
+  
+  // Валидация пароля: минимум 8 символов, обязателен
+  string password = 3 [(validate.rules).string = {
+    min_len: 8,
+    min_bytes: 8
+  }];
+  
+  // Должен совпадать с password (можно проверить в коде)
   string password_confirm = 4;
-  Role role = 5;
+  
+  // Роль должна быть определена в enum
+  Role role = 5 [(validate.rules).enum = {
+    defined_only: true,
+    not_in: [0]  // Нельзя использовать USER (если нужно)
+  }];
 }
 
 message CreateResponse {
   int64 id = 1;
 }
-
 message GetRequest {
-  int64 id = 1;
+  // ID должен быть положительным
+  int64 id = 1 [(validate.rules).int64.gt = 0];
 }
 
 message GetResponse {
@@ -45,11 +106,22 @@ message GetResponse {
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
 }
-
 message UpdateRequest {
-  int64 id = 1;
-  google.protobuf.StringValue name = 2;
-  google.protobuf.StringValue email = 3;
+  // ID должен быть положительным
+  int64 id = 1 [(validate.rules).int64.gt = 0];
+  
+  // Игнорировать, если не указано (ignore_empty), но если указано - проверять
+  google.protobuf.StringValue name = 2 [(validate.rules).string = {
+    min_len: 2,
+    max_len: 50,
+    ignore_empty: true
+  }];
+  
+  // Email должен быть корректным, если указан
+  google.protobuf.StringValue email = 3 [(validate.rules).string = {
+    email: true,
+    ignore_empty: true
+  }];
 }
 
 
